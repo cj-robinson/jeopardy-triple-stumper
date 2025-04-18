@@ -1,27 +1,21 @@
+# SET UP
+# ---------------------------------------------------------------------
+# load necessary libraries
 library(tidyverse)
 library(lubridate)
+library(zoo)
 
+# read in the data
 df <- read_csv("/Users/cjrobinson/Documents/github/jeopardy/jeopardy_clues_2.csv")
 
-
+# CLEANING
+# ---------------------------------------------------------------------
+# change date format
 df <- df %>%
   mutate(date = mdy(str_extract(game_date, "(?<= - ).*"))) %>% 
   filter(date >= '2009-06-01')
 
-df %>% 
-  group_by(date) %>% 
-  summarize(stumps = sum(triple_stump)) %>% 
-  ggplot(aes(x = date, y = stumps)) + 
-  geom_line()
-
-
-df %>% 
-  group_by(date, game) %>% 
-  summarize(stumps = sum(triple_stump)) %>% 
-  arrange(desc(stumps))
-
-library(zoo)
-
+# find tournalemt games
 non_special <- df %>%
   filter(!grepl("master", tolower(game_comments)),
          !grepl("invitation", tolower(game_comments)),
@@ -33,18 +27,19 @@ non_special <- df %>%
          !grepl("power player", tolower(game_comments)),
          !grepl("battle", tolower(game_comments)),
          !grepl("kids", tolower(game_comments)),
-         
-         # !grepl("final", tolower(game_comments)),
-         !grepl("tournament", tolower(game_comments)))
+                  !grepl("tournament", tolower(game_comments)))
 
+# examine comments from each game
 comments <- non_special %>% group_by(game_comments, date) %>% tally()
 filtered_games <- anti_join(df, non_special, by = "game") %>% group_by(game_comments) %>% tally()
 
 
-# wrong count -- no filtering
+# EXPLORATION + VIZ
+# ---------------------------------------------------------------------
+# triple stumpers -- no filtering
 df %>%
   group_by(date, game) %>%
-  summarize(stumps = sum(wrong_count)) %>%
+  summarize(stumps = sum(triple_stump)) %>%
   group_by(date) %>% 
   summarize(stumps = mean(stumps)) %>% 
   arrange(date) %>% 
@@ -57,11 +52,10 @@ df %>%
 ggsave("../img/triple_stumper_timeline.pdf")
 
 
-# wrong count -- filtering
-
+# triple stumpers -- filtering
 non_special %>%
   group_by(date, game) %>%
-  summarize(stumps = sum(wrong_count)) %>%
+  summarize(stumps = sum(triple_stump)) %>%
   group_by(date) %>% 
   summarize(stumps = mean(stumps)) %>% 
   mutate(rolling_avg = rollmean(stumps, k = 30, fill = NA, align = "right")) %>%
@@ -74,6 +68,19 @@ non_special %>%
 
 ggsave("../img/triple_stumper_timeline_filtered.pdf")
 
+# beeswarm of all games -- import into RAWGRAPHS
+df %>% 
+  filter(date >= '2015-01-01') %>%
+  group_by(date, game) %>%
+  summarize(stumps = sum(triple_stump), .groups = "keep")  %>%
+  mutate(period = ifelse(date>='2024-01-01', "recent", "old")) %>% 
+  write_csv("stumps.csv") 
+
+
+
+
+# OTHER EXPLORATION/DUMP
+# ---------------------------------------------------------------------
 
 # rolling average of triple stumpers -- filtered
 non_special %>% 
@@ -227,12 +234,7 @@ df %>%
    write_csv("stumps_cat.csv") 
   
 
-df %>% 
-  filter(date >= '2015-01-01') %>%
-  group_by(date, game) %>%
-  summarize(stumps = sum(triple_stump), .groups = "keep")  %>%
-  mutate(period = ifelse(date>='2024-01-01', "recent", "old")) %>% 
-  write_csv("stumps.csv") 
+
 
 df %>% 
   filter(date >= '2015-01-01') %>%
