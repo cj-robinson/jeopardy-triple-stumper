@@ -4,9 +4,10 @@
 library(tidyverse)
 library(lubridate)
 library(zoo)
+library(jsonlite)
 
 # read in the data
-df <- read_csv("/Users/cjrobinson/Documents/github/jeopardy/jeopardy_clues_2.csv")
+df <- read_csv("../data/jeopardy_clues_2.csv")
 
 # CLEANING
 # ---------------------------------------------------------------------
@@ -15,7 +16,7 @@ df <- df %>%
   mutate(date = mdy(str_extract(game_date, "(?<= - ).*"))) %>% 
   filter(date >= '2009-06-01')
 
-# find tournalemt games
+# find tournament games
 non_special <- df %>%
   filter(!grepl("master", tolower(game_comments)),
          !grepl("invitation", tolower(game_comments)),
@@ -76,7 +77,18 @@ df %>%
   mutate(period = ifelse(date>='2024-01-01', "recent", "old")) %>% 
   write_csv("stumps.csv") 
 
+# STUMPS
+# ---------------------------------------------------------------------
 
+jeopardy_questions <- non_special %>% 
+  filter(triple_stump,
+         value == 200) %>% 
+  select(clue_text, correct_response, value) %>% 
+  rename("clue" = "clue_text", 
+         "answer" = "correct_response")
+
+
+write_json(jeopardy_questions, "../data/jeopardy_questions.json", pretty = TRUE)
 
 
 # OTHER EXPLORATION/DUMP
