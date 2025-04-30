@@ -59,7 +59,7 @@ non_special %>%
   summarize(stumps = sum(triple_stump)) %>%
   group_by(date) %>% 
   summarize(stumps = mean(stumps)) %>% 
-  mutate(rolling_avg = rollmean(stumps, k = 30, fill = NA, align = "right")) %>%
+  mutate(rolling_avg = rollmean(stumps, k = 150, fill = NA, align = "right")) %>%
   mutate(group = cumsum(c(0, diff(as.numeric(date)) > 5))) %>%
   ggplot(aes(x = date)) +
   # geom_line(aes(y = stumps)) +
